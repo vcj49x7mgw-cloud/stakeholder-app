@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>KAM V20 FIXED VIEW</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f5f9fc}
+.shell{padding:20px}
+button{padding:10px;margin:5px}
+
+#report{display:none}
+
+/* PRINT FIX */
+@media print {
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  .page {
+    page-break-inside: avoid;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    overflow: hidden;
+    height: 190mm;
+  }
+
+  svg {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    height: auto !important;
+  }
+
+  body{background:#fff}
+  .shell{display:none!important}
+  #report{display:block!important}
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+<h2>KAM Tool (V20 stabil)</h2>
+
+<input type="file" id="fileInput">
+<button onclick="run()">Datei laden</button>
+<button onclick="showPreview()">Preview anzeigen</button>
+<button onclick="printPDF()">PDF erzeugen</button>
+
+<div id="status"></div>
+</div>
+
+<div id="report"></div>
+
+<script>
+let data=[];
+
+function run(){
+ const file=document.getElementById('fileInput').files[0];
+ const reader=new FileReader();
+
+ reader.onload=e=>{
+  const wb=XLSX.read(e.target.result,{type:'binary'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+  data=rows.map(r=>({
+    name:(r.Vorname||"")+" "+(r.Nachname||""),
+    influence:+r.Einfluss||1,
+    interest:+r.Interesse||1
+  }));
+
+  document.getElementById("status").innerText="geladen: "+data.length;
+ };
+
+ reader.readAsBinaryString(file);
+}
+
+function buildReport(){
+ return `
+ <div class="page">
+   <h1>KAM Report</h1>
+   <p>Stakeholder: ${data.length}</p>
+ </div>
+
+ <div class="page">
+   <h2>Top Stakeholder</h2>
+   ${data.slice(0,5).map(x=>"<div>"+x.name+"</div>").join("")}
+ </div>
+ `;
+}
+
+function showPreview(){
+ document.getElementById("report").style.display="block";
+ document.getElementById("report").innerHTML=buildReport();
+}
+
+function printPDF(){
+ showPreview();
+ setTimeout(()=>window.print(),200);
+}
+</script>
+
+</body>
+</html>
