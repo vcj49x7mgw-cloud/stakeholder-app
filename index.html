@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>KAM Statusbericht V18</title>
+<title>KAM Statusbericht V20</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
@@ -76,7 +76,7 @@ svg text{font-family:Arial,sans-serif}
 <div class="shell">
   <div class="hero">
     <h1>KAM Statusbericht</h1>
-    <p>V18. D3-Organigramm, robuste Parsing-Logik, Stakeholder-Matrix gesamt und pro Rolle sowie druckstabile PDF-Ausgabe mit Farberhalt.</p>
+    <p>V20. Entschlackte Berichtsversion mit D3-Highlight-Logik, reduzierter Redundanz und maximal verdichtetem Management-Format.</p>
   </div>
 
   <div class="panel">
@@ -486,7 +486,7 @@ function hierarchyColor(n){
   return '#0f4c81';
 }
 
-function renderD3Tree(containerId, roots){
+function renderD3Tree(containerId, roots, relevantIds = null){
   const container = document.getElementById(containerId);
   if(!container) return;
   container.innerHTML = "";
@@ -497,8 +497,8 @@ function renderD3Tree(containerId, roots){
 
   const data = { id:"root", fullName:"System", role:"", children: roots };
   const root = d3.hierarchy(data);
-  const dx = 86;
-  const dy = 180;
+  const dx = 78;
+  const dy = 175;
   const tree = d3.tree().nodeSize([dx, dy]);
   tree(root);
 
@@ -508,16 +508,16 @@ function renderD3Tree(containerId, roots){
     if(d.x < x0) x0 = d.x;
   });
 
-  const width = Math.max(920, root.height * dy + 260);
+  const width = Math.max(880, root.height * dy + 240);
   const height = x1 - x0 + dx * 2 + 40;
 
   const svg = d3.select(rootWrap)
     .append("svg")
     .attr("viewBox", [0, 0, width, height])
     .attr("width", "100%")
-    .attr("height", Math.min(620, height));
+    .attr("height", Math.min(560, height));
 
-  const g = svg.append("g").attr("transform", `translate(40,${dx - x0})`);
+  const g = svg.append("g").attr("transform", `translate(36,${dx - x0})`);
 
   g.append("g")
     .attr("fill", "none")
@@ -526,23 +526,28 @@ function renderD3Tree(containerId, roots){
     .selectAll("path")
     .data(root.links().filter(l => l.source.data.id !== "root"))
     .join("path")
+    .attr("opacity", d => {
+      if(!relevantIds) return 1;
+      return (relevantIds.has(d.source.data.id) || relevantIds.has(d.target.data.id)) ? 1 : 0.15;
+    })
     .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
 
   const node = g.append("g")
     .selectAll("g")
     .data(root.descendants().filter(d => d.data.id !== "root"))
     .join("g")
-    .attr("transform", d => `translate(${d.y},${d.x})`);
+    .attr("transform", d => `translate(${d.y},${d.x})`)
+    .style("opacity", d => !relevantIds ? 1 : (relevantIds.has(d.data.id) ? 1 : 0.15));
 
-  const nodeW = 168, nodeH = 56;
+  const nodeW = 164, nodeH = 54;
 
   node.append("rect")
     .attr("x", 0).attr("y", -nodeH/2)
     .attr("width", nodeW).attr("height", nodeH)
     .attr("rx", 12)
     .attr("fill", "#fff")
-    .attr("stroke", "#c9dceb")
-    .attr("stroke-width", 1.5);
+    .attr("stroke", d => !relevantIds ? "#c9dceb" : (relevantIds.has(d.data.id) ? "#0f4c81" : "#c9dceb"))
+    .attr("stroke-width", d => !relevantIds ? 1.5 : (relevantIds.has(d.data.id) ? 2.2 : 1.2));
 
   node.append("rect")
     .attr("x", 0).attr("y", -nodeH/2)
@@ -571,7 +576,7 @@ function renderD3Tree(containerId, roots){
   const note = document.createElement("div");
   note.className = "small";
   note.style.marginTop = "8px";
-  note.textContent = "Das Organigramm wird per D3-Hierarchie-Layout berechnet. Dadurch bleiben Eltern-Kind-Beziehungen auch bei asymmetrischen Bäumen stabil lesbar.";
+  note.textContent = relevantIds ? "Der Gesamtbaum bleibt vollständig erhalten. Für diese Sicht werden nur relevante Knoten hervorgehoben, alle übrigen bleiben bewusst abgeblendet sichtbar." : "Das Organigramm wird per D3-Hierarchie-Layout berechnet. Dadurch bleiben Eltern-Kind-Beziehungen auch bei asymmetrischen Bäumen stabil lesbar.";
   rootWrap.appendChild(note);
 }
 
@@ -602,36 +607,29 @@ function roleFocus(role){
 
 function rolePagesMarkup(role){
   const subset = roleSpecificView(enriched, role);
+  const relevantIds = subset.map(s => s.id);
   const orgId = `org-${role.toLowerCase()}`;
   return `
     <div class="page">
       <div class="page-header">
-        <div><div class="page-title">${role} – Status aus KAM-Sicht</div><div class="page-sub">${roleFocus(role)}</div></div>
+        <div><div class="page-title">${role} – Fokus aus KAM-Sicht</div><div class="page-sub">${roleFocus(role)}</div></div>
         <div class="badge">${role}</div>
       </div>
-      ${topTable(subset,8)}
-      <div class="footer"><span>Rollenperspektive ${role}</span><span>Version V18</span></div>
-    </div>
-    <div class="page">
-      <div class="page-header">
-        <div><div class="page-title">${role} – Organigramm</div><div class="page-sub">Fokussierte Struktur aus Sicht der Rolle ${role}.</div></div>
-        <div class="badge">${role}</div>
+      <div class="role-grid">
+        <div>
+          ${matrixSvgMarkup(subset)}
+        </div>
+        <div>
+          <div id="${orgId}"></div>
+        </div>
       </div>
-      <div id="${orgId}"></div>
-      <div class="footer"><span>Organigramm ${role}</span><span>Version V18</span></div>
-    </div>
-    <div class="page">
-      <div class="page-header">
-        <div><div class="page-title">${role} – Stakeholder-Matrix</div><div class="page-sub">Interesse x Einfluss für die Rolle ${role}.</div></div>
-        <div class="badge">${role}</div>
-      </div>
-      ${matrixSvgMarkup(subset)}
-      <div class="footer"><span>Matrix ${role}</span><span>Version V18</span></div>
+      <div class="section-space">${topTable(subset,6)}</div>
+      <div class="footer"><span>Rollenperspektive ${role}</span><span>Version V20</span></div>
     </div>`;
 }
 
 function priorityCards(){
-  const list = enriched.filter(x => x.priority === 'A').slice(0,6);
+  const list = enriched.filter(x => x.kamCategory === 'Entwickeln').slice(0,6);
   return `<div class="stb-grid">${list.map(p => `
     <div class="stb">
       <h3>${esc(p.fullName)}</h3>
@@ -658,7 +656,7 @@ function preparePdf(){
         <div class="card"><h3>Entwickeln</h3><div class="big">${enriched.filter(x => x.kamCategory === 'Entwickeln').length}</div></div>
         <div class="card"><h3>kritische Personen</h3><div class="big">${enriched.filter(x => x.riskFlag).length}</div></div>
       </div>
-      <div class="footer"><span>Gesamtübersicht</span><span>Version V18</span></div>
+      <div class="footer"><span>Gesamtübersicht</span><span>Version V20</span></div>
     </div>
 
     <div class="page">
@@ -667,8 +665,7 @@ function preparePdf(){
         <div class="badge">Summary</div>
       </div>
       ${summaryText()}
-      <div class="section-space">${topTable(enriched,6)}</div>
-      <div class="footer"><span>Executive Summary</span><span>Version V18</span></div>
+      <div class="footer"><span>Executive Summary</span><span>Version V20</span></div>
     </div>
 
     <div class="page">
@@ -677,7 +674,7 @@ function preparePdf(){
         <div class="badge">Matrix</div>
       </div>
       ${matrixSvgMarkup(enriched)}
-      <div class="footer"><span>Matrix gesamt</span><span>Version V18</span></div>
+      <div class="footer"><span>Matrix gesamt</span><span>Version V20</span></div>
     </div>
 
     <div class="page">
@@ -686,16 +683,7 @@ function preparePdf(){
         <div class="badge">Struktur</div>
       </div>
       <div id="org-overall"></div>
-      <div class="footer"><span>Organigramm gesamt</span><span>Version V18</span></div>
-    </div>
-
-    <div class="page">
-      <div class="page-header">
-        <div><div class="page-title">Top Stakeholder</div><div class="page-sub">Die aktuell wichtigsten Positionen mit direkter Relevanz für die Betreuung.</div></div>
-        <div class="badge">Top 10</div>
-      </div>
-      ${topTable(enriched,10)}
-      <div class="footer"><span>Top Stakeholder</span><span>Version V18</span></div>
+      <div class="footer"><span>Organigramm gesamt</span><span>Version V20</span></div>
     </div>
 
     ${rolePagesMarkup('SVD')}
@@ -709,14 +697,14 @@ function preparePdf(){
         <div class="badge">A-Prioritäten</div>
       </div>
       ${priorityCards()}
-      <div class="footer"><span>A-Prioritäten</span><span>Version V18</span></div>
+      <div class="footer"><span>A-Prioritäten</span><span>Version V20</span></div>
     </div>`;
-
-  renderD3Tree("org-overall", buildHierarchyTree(enriched.slice(0,18)));
-  renderD3Tree("org-svd", buildHierarchyTree(roleSpecificView(enriched, "SVD")));
-  renderD3Tree("org-mvd", buildHierarchyTree(roleSpecificView(enriched, "MVD")));
-  renderD3Tree("org-vvd", buildHierarchyTree(roleSpecificView(enriched, "VVD")));
-  renderD3Tree("org-pvd", buildHierarchyTree(roleSpecificView(enriched, "PVD")));
+  const overallRoots = buildHierarchyTree(enriched.slice(0,22));
+  renderD3Tree("org-overall", overallRoots);
+  renderD3Tree("org-svd", overallRoots, new Set(roleSpecificView(enriched, "SVD").map(s => s.id)));
+  renderD3Tree("org-mvd", overallRoots, new Set(roleSpecificView(enriched, "MVD").map(s => s.id)));
+  renderD3Tree("org-vvd", overallRoots, new Set(roleSpecificView(enriched, "VVD").map(s => s.id)));
+  renderD3Tree("org-pvd", overallRoots, new Set(roleSpecificView(enriched, "PVD").map(s => s.id)));
 
   setTimeout(() => window.print(), 150);
 }
