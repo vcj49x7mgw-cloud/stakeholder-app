@@ -1,0 +1,514 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KAM Statusbericht V12 Kontrollfenster</title>
+<style>
+  :root{
+    --blue:#0f4c81;
+    --blue2:#1968a5;
+    --blue3:#d9ebf7;
+    --bg:#f5f9fc;
+    --card:#ffffff;
+    --line:#c9dceb;
+    --text:#16324a;
+    --muted:#5f7b93;
+    --green:#57b884;
+    --yellow:#e8b949;
+    --red:#d76a6a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .shell{max-width:1080px;margin:34px auto;padding:0 16px}
+  .hero{
+    background:linear-gradient(135deg,var(--blue),var(--blue2));
+    color:#fff;border-radius:24px;padding:28px 24px;margin-bottom:18px;
+    box-shadow:0 12px 34px rgba(15,76,129,.14);
+  }
+  .hero h1{margin:0 0 8px 0;font-size:28px}
+  .hero p{margin:0;opacity:.95;line-height:1.45}
+  .panel{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;
+    box-shadow:0 8px 24px rgba(15,76,129,.08);
+  }
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  input[type=file]{flex:1 1 320px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+  .primary{background:var(--blue);color:#fff}
+  .secondary{background:var(--blue3);color:var(--text)}
+  .hint{margin-top:12px;font-size:13px;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat .k{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .stat .v{font-size:28px;font-weight:800}
+  .control{
+    margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;
+  }
+  .control h2{margin:0 0 10px 0;color:var(--blue);font-size:18px}
+  .statusline{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:10px}
+  .preview-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+  .box{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+  .box h3{margin:0 0 8px 0;font-size:14px;color:var(--blue)}
+  .preview-list{font-size:13px;line-height:1.5;color:var(--text)}
+  .preview-list div{margin-bottom:4px}
+  .small{font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--blue);border-bottom:2px solid var(--line);padding:8px 6px}
+  td{border-bottom:1px solid #e6eef5;padding:7px 6px;vertical-align:top}
+  .prio-A{font-weight:800;color:var(--blue)}
+  .prio-B{font-weight:700;color:#7a5c15}
+  .prio-C{font-weight:700;color:var(--muted)}
+  .att-positiv{color:var(--green);font-weight:700}
+  .att-neutral{color:var(--yellow);font-weight:700}
+  .att-kritisch{color:var(--red);font-weight:700}
+  #report{display:none}
+  .page{width:297mm;min-height:210mm;background:#fff;color:var(--text);padding:14mm 14mm 12mm 14mm;page-break-after:always;position:relative}
+  .page:last-child{page-break-after:auto}
+  .page-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--blue3);padding-bottom:8mm;margin-bottom:8mm}
+  .page-title{font-size:24px;line-height:1.08;font-weight:800;color:var(--blue)}
+  .page-sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .badge{background:var(--blue3);color:var(--blue);padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700}
+  .hero-box{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:18px 20px;border-radius:18px;font-size:22px;line-height:1.35;font-weight:800}
+  .cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;margin-top:8mm}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h3{margin:0 0 8px 0;color:var(--blue);font-size:15px}
+  .big{font-size:30px;font-weight:800}
+  .summary p{margin:0 0 8px 0;font-size:15px;line-height:1.45}
+  .org-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm}
+  .org-col h3{margin:0 0 8px 0;color:var(--blue);font-size:15px}
+  .org-node{border:1px solid var(--line);border-left:6px solid var(--blue);border-radius:12px;padding:10px 11px;margin-bottom:6px;background:#fff}
+  .org-name{font-weight:800;margin-bottom:3px}
+  .org-role{font-size:12px;color:var(--muted)}
+  .org-meta{font-size:11px;color:var(--muted);margin-top:4px}
+  .stb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7mm}
+  .stb{border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;min-height:66mm}
+  .stb h3{margin:0 0 6px 0;color:var(--blue)}
+  .stb p{margin:0 0 6px 0;font-size:12px;line-height:1.4}
+  .pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700;background:#eef6fb;color:var(--blue)}
+  .footer-note{position:absolute;bottom:8mm;left:14mm;right:14mm;color:var(--muted);font-size:10px;display:flex;justify-content:space-between}
+  @page{size:A4 landscape;margin:0}
+  @media print{
+    body{background:#fff}
+    .shell{display:none!important}
+    #report{display:block!important}
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <h1>KAM Statusbericht</h1>
+      <p>Reduzierte Oberfläche mit Kontrollfenster. Erst prüfen, dann PDF erzeugen. Fokus auf Gesamtbild, Organigramm und rollenspezifische Sicht für SVD, MVD, VVD und PVD.</p>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <input id="fileInput" type="file" accept=".xlsx,.xls" />
+        <button class="primary" onclick="processFile()">Datei prüfen</button>
+        <button class="secondary" onclick="preparePdf()">PDF erzeugen</button>
+      </div>
+      <div class="hint">Vor dem PDF kurz prüfen, ob Namen, Prioritäten und Top-Personen plausibel aussehen.</div>
+
+      <div class="stats">
+        <div class="stat"><div class="k">Stakeholder gesamt</div><div class="v" id="statTotal">–</div></div>
+        <div class="stat"><div class="k">Priorität A</div><div class="v" id="statA">–</div></div>
+        <div class="stat"><div class="k">Kritische Hoch-Einfluss-Personen</div><div class="v" id="statCritical">–</div></div>
+        <div class="stat"><div class="k">Version</div><div class="v" style="font-size:18px">V12 FINAL</div></div>
+      </div>
+
+      <div class="control">
+        <h2>Kontrollfenster</h2>
+        <div class="statusline" id="statusLine">Bereit. Noch keine Datei geprüft.</div>
+        <div class="preview-grid">
+          <div class="box">
+            <h3>Top 6 nach Score</h3>
+            <div id="topPreview" class="preview-list small">Noch keine Daten geladen.</div>
+          </div>
+          <div class="box">
+            <h3>Prüfhinweise</h3>
+            <div id="checkPreview" class="preview-list small">
+              <div>• Datei wurde noch nicht geprüft</div>
+              <div>• Namen, Prioritäten und Anzahl danach kurz plausibilisieren</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="report"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let enriched = [];
+
+    function setStatus(msg){
+      document.getElementById("statusLine").textContent = msg || "";
+    }
+
+    function setTopPreview(items){
+      const el = document.getElementById("topPreview");
+      if(!items.length){
+        el.innerHTML = "Noch keine Daten geladen.";
+        return;
+      }
+      el.innerHTML = items.map((p, i) =>
+        `<div><strong>${i+1}.</strong> ${escapeHtml(p.name)} · Score ${Math.round(p.score)} · Prio ${p.priority}</div>`
+      ).join("");
+    }
+
+    function setChecks(lines){
+      const el = document.getElementById("checkPreview");
+      el.innerHTML = lines.map(x => `<div>• ${escapeHtml(x)}</div>`).join("");
+    }
+
+    function normalize(s){
+      return String(s || "").toLowerCase().replace(/[–—]/g, "-").replace(/[^a-z0-9äöüß]/g, "");
+    }
+
+    function mapHeader(raw){
+      const n = normalize(raw);
+      if(n.includes("vorname")) return "vorname";
+      if(n.includes("nachname")) return "nachname";
+      if(n === "name" || n.includes("vollname")) return "name";
+      if(n.includes("position") || n.includes("titel") || n.includes("rolle")) return "role";
+      if(n.includes("bereich") || n.includes("abteilung")) return "department";
+      if(n.includes("hierarchie")) return "hierarchy";
+      if(n.includes("einfluss")) return "influence";
+      if(n.includes("interesse")) return "interest";
+      if(n.includes("haltung")) return "attitude";
+      if(n.includes("beeinfluss")) return "persuadability";
+      if(n.includes("vorgesetz")) return "boss";
+      if(n.includes("themen")) return "topics";
+      if(n.includes("notiz") || n.includes("hinweis")) return "notes";
+      return "other";
+    }
+
+    function parseNumber(v){
+      const n = Number(String(v).replace(",", "."));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function attitudeClass(txt){
+      const t = String(txt || "").toLowerCase();
+      if(t.includes("krit") || t.includes("neg")) return "kritisch";
+      if(t.includes("neutral")) return "neutral";
+      return "positiv";
+    }
+
+    function attitudeFactor(txt){
+      const t = String(txt || "").toLowerCase();
+      if(t.includes("krit") || t.includes("neg")) return 0.75;
+      if(t.includes("neutral")) return 1.0;
+      if(t.includes("posit")) return 1.15;
+      return 1.0;
+    }
+
+    function fullName(row){
+      const n = String(row.name || "").trim();
+      if(n) return n;
+      const first = String(row.vorname || "").trim();
+      const last = String(row.nachname || "").trim();
+      return [first, last].filter(Boolean).join(" ").trim();
+    }
+
+    function detectHeaderRow(rows){
+      for(let i=0;i<Math.min(rows.length, 12); i++){
+        const r = rows[i].map(x => normalize(x));
+        if(r.some(v => v.includes("einfluss")) && r.some(v => v.includes("interesse"))){
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    function priority(score){
+      if(score >= 55) return "A";
+      if(score >= 32) return "B";
+      return "C";
+    }
+
+    function scoreRow(r){
+      const infl = parseNumber(r.influence) ?? 1;
+      const inter = parseNumber(r.interest) ?? 1;
+      const pers = parseNumber(r.persuadability) ?? 1;
+      const hier = parseNumber(r.hierarchy) ?? 3;
+      return infl * inter * pers * (6 - hier) * attitudeFactor(r.attitude);
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+    }
+
+    function processFile(){
+      const file = document.getElementById('fileInput').files[0];
+      if(!file){ alert("Bitte zuerst eine Excel-Datei auswählen."); return; }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try{
+          const wb = XLSX.read(e.target.result, {type:"binary"});
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+          const headerRow = detectHeaderRow(rows);
+
+          if(headerRow < 0){
+            setStatus("Kopfzeile wurde nicht erkannt.");
+            setChecks(["Die Datei enthält keine erkennbare Kopfzeile mit Einfluss und Interesse."]);
+            return;
+          }
+
+          const mappedHeaders = rows[headerRow].map(mapHeader);
+          const data = [];
+
+          for(let i=headerRow+1; i<rows.length; i++){
+            const row = rows[i];
+            if(!row || row.every(v => String(v).trim() === "")) continue;
+            const obj = {};
+            row.forEach((v, idx) => {
+              const key = mappedHeaders[idx];
+              if(!key || key === "other") return;
+              obj[key] = v;
+            });
+            obj.name = fullName(obj);
+            if(obj.name) data.push(obj);
+          }
+
+          const seen = new Set();
+          enriched = data.map(r => ({
+            ...r,
+            score: scoreRow(r),
+            priority: priority(scoreRow(r)),
+            attitudeType: attitudeClass(r.attitude),
+            influenceNum: parseNumber(r.influence) ?? 1,
+            interestNum: parseNumber(r.interest) ?? 1,
+            persuadabilityNum: parseNumber(r.persuadability) ?? 1,
+            hierarchyNum: parseNumber(r.hierarchy) ?? 3
+          })).filter(p => {
+            const key = p.name + "|" + (p.role || "");
+            if(seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          }).sort((a,b) => b.score - a.score);
+
+          document.getElementById("statTotal").textContent = enriched.length;
+          document.getElementById("statA").textContent = enriched.filter(x => x.priority === "A").length;
+          document.getElementById("statCritical").textContent = enriched.filter(x => x.influenceNum >= 4 && x.attitudeType === "kritisch").length;
+
+          setStatus("Datei geprüft. " + enriched.length + " Stakeholder erkannt.");
+          setTopPreview(enriched.slice(0,6));
+          setChecks([
+            "Kopfzeile erkannt und Daten eingelesen",
+            enriched.filter(x => x.priority === "A").length + " Stakeholder in Priorität A",
+            enriched.filter(x => x.influenceNum >= 4 && x.attitudeType === "kritisch").length + " kritische Hoch-Einfluss-Personen",
+            "Namen und Top-Personen vor dem PDF kurz gegenprüfen"
+          ]);
+        } catch(err){
+          setStatus("Fehler beim Einlesen: " + err.message);
+          setChecks(["Die Datei konnte nicht sauber verarbeitet werden."]);
+        }
+      };
+      reader.readAsBinaryString(file);
+    }
+
+    function renderTopTable(list, limit=10){
+      const rows = list.slice(0, limit).map(p => `
+        <tr>
+          <td class="prio-${p.priority}">${p.priority}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${escapeHtml(p.role || p.department || "")}</td>
+          <td>${Math.round(p.score)}</td>
+          <td class="att-${p.attitudeType}">${escapeHtml(p.attitude || p.attitudeType)}</td>
+          <td>${escapeHtml(p.topics || "")}</td>
+        </tr>
+      `).join("");
+      return `<table><thead><tr><th>Prio</th><th>Name</th><th>Rolle/Bereich</th><th>Score</th><th>Haltung</th><th>Themen</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderOrgFromList(list){
+      const level1 = list.filter(x => x.hierarchyNum <= 1.5).slice(0,8);
+      const level2 = list.filter(x => x.hierarchyNum > 1.5 && x.hierarchyNum <= 3).slice(0,16);
+      const level3 = list.filter(x => x.hierarchyNum > 3).slice(0,18);
+
+      function node(p){
+        const color = p.attitudeType === "kritisch" ? "var(--red)" :
+                      p.attitudeType === "neutral" ? "var(--yellow)" : "var(--blue)";
+        return `
+          <div class="org-node" style="border-left-color:${color}">
+            <div class="org-name">${escapeHtml(p.name)}</div>
+            <div class="org-role">${escapeHtml(p.role || p.department || "")}</div>
+            <div class="org-meta">Prio ${p.priority} · Haltung ${escapeHtml(p.attitude || p.attitudeType)}</div>
+            <div class="org-meta">Vorgesetzt: ${escapeHtml(p.boss || "–")}</div>
+          </div>`;
+      }
+
+      return `
+        <div class="org-grid">
+          <div class="org-col"><h3>Top-Ebene</h3>${level1.map(node).join("")}</div>
+          <div class="org-col"><h3>mittlere Ebene</h3>${level2.map(node).join("")}</div>
+          <div class="org-col"><h3>operative Ebene</h3>${level3.map(node).join("")}</div>
+        </div>`;
+    }
+
+    function summaryText(){
+      const aCount = enriched.filter(x => x.priority === "A").length;
+      const highInfluence = enriched.filter(x => x.influenceNum >= 4).length;
+      const highInterest = enriched.filter(x => x.interestNum >= 4).length;
+      const top5 = enriched.slice(0,5).map(x => x.name).join(", ");
+      return `
+        <div class="summary">
+          <p>Aktuell liegen <strong>${aCount} Stakeholder in Priorität A</strong>. Diese Personen sind aus Sicht des Key Account Managements primär bearbeitungsrelevant.</p>
+          <p>Die Gesamtsicht zeigt <strong>${highInfluence} Personen mit Einfluss 4–5</strong> und zugleich <strong>${highInterest} Personen mit hohem Interesse</strong>.</p>
+          <p>Die stärksten Hebel liegen derzeit bei <strong>${escapeHtml(top5)}</strong>.</p>
+          <p>Für die weitere Steuerung ist eine klare Trennung zwischen <strong>aktiver Entwicklung</strong>, <strong>Stabilisierung</strong> und <strong>Beobachtung</strong> erforderlich.</p>
+        </div>`;
+    }
+
+    function filterByRolePerspective(roleCode){
+      const keywordMap = {
+        SVD: ["steuer", "planung", "vertriebssteuer", "operativ", "kundencenter"],
+        MVD: ["vertrieb", "marktbear", "retail", "fläche", "aktivierung", "kundencenter"],
+        VVD: ["vermög", "private banking", "wertpapier", "anlage", "fonds"],
+        PVD: ["digital", "projekt", "transformation", "umsetzung", "planung"]
+      };
+      const keys = keywordMap[roleCode] || [];
+      let subset = enriched.filter(p => {
+        const hay = [p.role, p.department, p.topics, p.notes].join(" ").toLowerCase();
+        return keys.some(k => hay.includes(k));
+      });
+      if(subset.length < 6) subset = enriched.slice(0,10);
+      const dedup = [];
+      const seen = new Set();
+      subset.forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); dedup.push(p); }});
+      return dedup.slice(0, 12);
+    }
+
+    function roleFocusText(roleCode){
+      return {
+        SVD: "Fokus auf Steuerung, Planung, Vertriebssteuerung und operative Anschlussfähigkeit.",
+        MVD: "Fokus auf Marktbearbeitung, Fläche, Aktivierung und vertriebliche Multiplikatoren.",
+        VVD: "Fokus auf Vermögensberatung, Private Banking, Anlage- und Wertpapiernähe.",
+        PVD: "Fokus auf Projekte, Digitalisierung, Veränderung und Umsetzungsfähigkeit."
+      }[roleCode] || "";
+    }
+
+    function renderRolePage(roleCode){
+      const subset = filterByRolePerspective(roleCode);
+      return `
+        <div class="page">
+          <div class="page-header">
+            <div>
+              <div class="page-title">${roleCode} – Status aus KAM-Sicht</div>
+              <div class="page-sub">${roleFocusText(roleCode)}</div>
+            </div>
+            <div class="badge">${roleCode}</div>
+          </div>
+          ${renderTopTable(subset, 8)}
+          <div class="footer-note"><span>Rollenperspektive ${roleCode}</span><span>Version V12 FINAL</span></div>
+        </div>
+
+        <div class="page">
+          <div class="page-header">
+            <div>
+              <div class="page-title">${roleCode} – Organigramm</div>
+              <div class="page-sub">Fokussierte Struktur aus Sicht der Rolle ${roleCode}.</div>
+            </div>
+            <div class="badge">${roleCode}</div>
+          </div>
+          ${renderOrgFromList(subset)}
+          <div class="footer-note"><span>Organigramm ${roleCode}</span><span>Version V12 FINAL</span></div>
+        </div>`;
+    }
+
+    function renderPriorityCards(){
+      const list = enriched.filter(x => x.priority === "A").slice(0, 6);
+      return `
+        <div class="stb-grid">
+          ${list.map(p => `
+            <div class="stb">
+              <h3>${escapeHtml(p.name)}</h3>
+              <p><span class="pill">${escapeHtml(p.role || p.department || "")}</span> <span class="pill">Score ${Math.round(p.score)}</span></p>
+              <p><strong>Einordnung:</strong> Einfluss ${p.influenceNum}, Interesse ${p.interestNum}, Beeinflussbarkeit ${p.persuadabilityNum}, Haltung ${escapeHtml(p.attitude || p.attitudeType)}.</p>
+              <p><strong>KAM-Ableitung:</strong> aktive Bearbeitung mit klarer Anschlusslogik.</p>
+              <p><strong>Themen:</strong> ${escapeHtml(p.topics || "–")}</p>
+              <p><strong>Notizen:</strong> ${escapeHtml(p.notes || "–")}</p>
+            </div>`).join("")}
+        </div>`;
+    }
+
+    function preparePdf(){
+      if(!enriched.length){
+        alert("Bitte erst die Datei prüfen.");
+        return;
+      }
+
+      const report = document.getElementById('report');
+      report.innerHTML = `
+        <div class="page">
+          <div class="page-header">
+            <div>
+              <div class="page-title">KAM Statusbericht</div>
+              <div class="page-sub">Statusbericht aus Sicht des Key Account Managements</div>
+            </div>
+            <div class="badge">Gesamtübersicht</div>
+          </div>
+          <div class="hero-box">
+            Die Steuerung des betreuungsrelevanten Systems konzentriert sich aktuell auf ${escapeHtml(enriched.slice(0,5).map(x => x.name).join(", "))}. Aus KAM-Sicht ist eine differenzierte Bearbeitung dieser Schlüsselpositionen erforderlich.
+          </div>
+          <div class="cards3">
+            <div class="card"><h3>Stakeholder gesamt</h3><div class="big">${enriched.length}</div></div>
+            <div class="card"><h3>Priorität A</h3><div class="big">${enriched.filter(x => x.priority === "A").length}</div></div>
+            <div class="card"><h3>Kritische Hoch-Einfluss-Personen</h3><div class="big">${enriched.filter(x => x.influenceNum >= 4 && x.attitudeType === "kritisch").length}</div></div>
+          </div>
+          <div class="footer-note"><span>Gesamtübersicht</span><span>Version V12 FINAL</span></div>
+        </div>
+
+        <div class="page">
+          <div class="page-header">
+            <div><div class="page-title">Executive Summary</div><div class="page-sub">Verdichtung der zentralen Muster aus KAM-Sicht.</div></div>
+            <div class="badge">Summary</div>
+          </div>
+          ${summaryText()}
+          <div style="margin-top:6mm">${renderTopTable(enriched, 6)}</div>
+          <div class="footer-note"><span>Executive Summary</span><span>Version V12 FINAL</span></div>
+        </div>
+
+        <div class="page">
+          <div class="page-header">
+            <div><div class="page-title">Organigramm gesamt</div><div class="page-sub">Formale Struktur des betreuungsrelevanten Systems.</div></div>
+            <div class="badge">Struktur</div>
+          </div>
+          ${renderOrgFromList(enriched)}
+          <div class="footer-note"><span>Organigramm gesamt</span><span>Version V12 FINAL</span></div>
+        </div>
+
+        <div class="page">
+          <div class="page-header">
+            <div><div class="page-title">Top Stakeholder</div><div class="page-sub">Die aktuell wichtigsten Positionen mit direkter Relevanz für die Betreuung.</div></div>
+            <div class="badge">Top 10</div>
+          </div>
+          ${renderTopTable(enriched, 10)}
+          <div class="footer-note"><span>Top Stakeholder</span><span>Version V12 FINAL</span></div>
+        </div>
+
+        ${renderRolePage("SVD")}
+        ${renderRolePage("MVD")}
+        ${renderRolePage("VVD")}
+        ${renderRolePage("PVD")}
+
+        <div class="page">
+          <div class="page-header">
+            <div><div class="page-title">A-Prioritäten</div><div class="page-sub">Vertiefende Kurzprofile für die unmittelbar bearbeitungsrelevanten Personen.</div></div>
+            <div class="badge">A-Prioritäten</div>
+          </div>
+          ${renderPriorityCards()}
+          <div class="footer-note"><span>A-Prioritäten</span><span>Version V12 FINAL</span></div>
+        </div>
+      `;
+      window.print();
+    }
+  </script>
+</body>
+</html>
