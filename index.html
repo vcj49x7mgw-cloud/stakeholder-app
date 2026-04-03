@@ -1,0 +1,788 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KAM Statusbericht V20</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{
+  --blue:#0f4c81; --blue2:#1b6ba8; --blue3:#dcecf7; --bg:#f5f9fc; --card:#fff;
+  --line:#c9dceb; --text:#16324a; --muted:#5f7b93; --green:#57b884; --yellow:#e8b949; --red:#d76a6a; --gray:#8d9aaa;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+.shell{max-width:1200px;margin:28px auto;padding:0 16px}
+.hero{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border-radius:22px;padding:26px 22px;margin-bottom:18px}
+.hero h1{margin:0 0 8px;font-size:28px}
+.hero p{margin:0;line-height:1.45;opacity:.96}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,76,129,.08)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+input[type=file]{flex:1 1 360px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:#fff}.secondary{background:var(--blue3);color:var(--text)}
+.small{font-size:12px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}
+.stat,.box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat .k{font-size:12px;color:var(--muted)} .stat .v{font-size:28px;font-weight:800;margin-top:6px}
+.control{margin-top:16px;border:1px solid var(--line);border-radius:16px;padding:16px}
+.status{font-weight:700;color:var(--blue);margin-bottom:10px}
+.preview{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#report{display:none}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:var(--blue);border-bottom:2px solid var(--line);padding:8px 6px}
+td{border-bottom:1px solid #e6eef5;padding:7px 6px;vertical-align:top}
+.prio-A{font-weight:800;color:var(--blue)} .prio-B{font-weight:700;color:#7a5c15} .prio-C{font-weight:700;color:var(--muted)}
+.att-positiv{color:var(--green);font-weight:700}.att-neutral{color:var(--yellow);font-weight:700}.att-negativ,.att-kritisch{color:var(--red);font-weight:700}
+
+.page{width:297mm;min-height:210mm;background:#fff;color:var(--text);padding:14mm 14mm 12mm;page-break-after:always;position:relative}
+.page:last-child{page-break-after:auto}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--blue3);padding-bottom:8mm;margin-bottom:8mm}
+.page-title{font-size:24px;line-height:1.08;font-weight:800;color:var(--blue)}
+.page-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.badge{background:var(--blue3);color:var(--blue);padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700}
+.hero-box{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:18px 20px;border-radius:18px;font-size:22px;line-height:1.35;font-weight:800}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;margin-top:8mm}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h3{margin:0 0 8px;color:var(--blue);font-size:15px}
+.big{font-size:30px;font-weight:800}
+.summary p{margin:0 0 8px 0;font-size:15px;line-height:1.45}
+.pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700;background:#eef6fb;color:var(--blue)}
+.stb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7mm}
+.stb{border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;min-height:66mm}
+.stb h3{margin:0 0 6px 0;color:var(--blue)} .stb p{margin:0 0 6px 0;font-size:12px;line-height:1.4}
+.footer{position:absolute;bottom:8mm;left:14mm;right:14mm;color:var(--muted);font-size:10px;display:flex;justify-content:space-between}
+.orgwrap,.matrixwrap{border:1px solid var(--line);border-radius:16px;padding:10px;background:#fff}
+.legend{font-size:12px;color:var(--muted);line-height:1.45}
+.section-space{margin-top:6mm}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:6mm;align-items:start}
+svg text{font-family:Arial,sans-serif}
+
+@page{size:A4 landscape;margin:0}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .shell { display: none !important; }
+  #report { display: block !important; }
+
+  .page {
+    page-break-inside: avoid;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    overflow: hidden;
+    height: 190mm; /* Sichert das A4 Querformat ab */
+  }
+
+  svg {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    height: auto !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <h1>KAM Statusbericht</h1>
+    <p>V20. Entschlackte Berichtsversion mit D3-Highlight-Logik, reduzierter Redundanz und maximal verdichtetem Management-Format.</p>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <input id="fileInput" type="file" accept=".xlsx,.xls">
+      <button class="primary" onclick="processFile()">Datei prüfen</button>
+      <button class="secondary" onclick="preparePdf()">PDF erzeugen</button>
+    </div>
+    <div class="small" style="margin-top:12px">Vor dem PDF kurz prüfen, ob Namen, Kategorien, Organigramm-Matches und die Top-Personen plausibel aussehen.</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Stakeholder gesamt</div><div class="v" id="statTotal">–</div></div>
+      <div class="stat"><div class="k">Kategorie Entwickeln</div><div class="v" id="statDevelop">–</div></div>
+      <div class="stat"><div class="k">kritische Personen</div><div class="v" id="statCritical">–</div></div>
+      <div class="stat"><div class="k">Organigramm-Matches</div><div class="v" id="statMatches">–</div></div>
+    </div>
+
+    <div class="control">
+      <div style="font-size:18px;color:var(--blue);font-weight:800;margin-bottom:10px">Kontrollfenster</div>
+      <div class="status" id="statusLine">Bereit. Noch keine Datei geprüft.</div>
+      <div class="preview">
+        <div class="box">
+          <div style="font-weight:700;color:var(--blue);margin-bottom:8px">Top 6 nach Score</div>
+          <div id="topPreview" class="small">Noch keine Daten geladen.</div>
+        </div>
+        <div class="box">
+          <div style="font-weight:700;color:var(--blue);margin-bottom:8px">Prüfhinweise</div>
+          <div id="checkPreview" class="small">• Datei wurde noch nicht geprüft</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="report"></div>
+
+<script>
+let enriched = [], orgMatchCount = 0;
+
+const esc = s => String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+const setStatus = t => document.getElementById('statusLine').textContent = t || "";
+const norm = s => String(s || "").toLowerCase().replace(/[–—]/g,"-").replace(/[^a-z0-9äöüß]/g," ");
+const squash = s => norm(s).replace(/\s+/g," ").trim();
+
+function setTopPreview(items){
+  document.getElementById('topPreview').innerHTML = items.length
+    ? items.map((p,i)=>`<div><strong>${i+1}.</strong> ${esc(p.fullName)} · Score ${Math.round(p.score)} · ${esc(p.kamCategory)}</div>`).join("")
+    : "Noch keine Daten geladen.";
+}
+function setChecks(lines){
+  document.getElementById('checkPreview').innerHTML = lines.map(x=>`<div>• ${esc(x)}</div>`).join("");
+}
+
+const HEADER_DICTIONARY = {
+  firstName: /vorname|first\s*name|^vn$/i,
+  lastName: /nachname|last\s*name|^nn$|^name$/i,
+  role: /rolle|position|funktion|titel|role/i,
+  department: /abteilung|bereich|department|dept/i,
+  hierarchy: /hierarchie|ebene|level|grade/i,
+  influence: /einfluss|macht|influence/i,
+  interest: /interesse|interest/i,
+  persuadability: /beeinflussbarkeit|persuadability/i,
+  attitude: /haltung|einstellung|attitude/i,
+  bossRaw: /vorgesetzter|chef|manager|reporting/i,
+  topics: /themen|verantwortung|topic/i,
+  notes: /notizen|hinweis|notes/i,
+  teamRole: /betreuung|teamrolle|rolle im team|vertrieb/i
+};
+
+function mapHeaders(headerRow){
+  const mapped = {};
+  headerRow.forEach((cell, idx) => {
+    const clean = String(cell || "").replace(/\n/g, " ").trim();
+    for(const [key, pattern] of Object.entries(HEADER_DICTIONARY)){
+      if(mapped[key] !== undefined) continue;
+      if(pattern.test(clean)) { mapped[key] = idx; break; }
+    }
+  });
+  return mapped;
+}
+function detectHeaderRow(rows){
+  for(let i=0; i<Math.min(rows.length, 14); i++){
+    const rowText = rows[i].map(c => String(c || "").replace(/\n/g," ")).join(" | ").toLowerCase();
+    if(rowText.includes("vorname") && rowText.includes("nachname") && rowText.includes("einfluss")) return i;
+  }
+  return -1;
+}
+function num(v, dflt = null){
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : dflt;
+}
+function cleanName(name){
+  const raw = String(name || "").trim().replace(/\s+/g, " ");
+  if(!raw) return "";
+  if(raw.includes(",")){
+    const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+    if(parts.length === 2) return `${parts[1]} ${parts[0]}`.trim();
+    if(parts.length > 2) return `${parts.slice(1).join(" ")} ${parts[0]}`.trim();
+  }
+  return raw;
+}
+function attitudeInfo(value){
+  const t = String(value || "").toLowerCase().trim();
+  if(t.includes("neg")) return {label:"negativ", factor:0.75};
+  if(t.includes("krit")) return {label:"kritisch", factor:0.75};
+  if(t.includes("neutral")) return {label:"neutral", factor:1.0};
+  return {label:"positiv", factor:1.15};
+}
+function hierarchyInfo(value){
+  const raw = String(value || "").trim();
+  const s = squash(raw);
+  if(s.includes("f1")) return {code:"F1", weight:5, rank:1};
+  if(s.includes("f2")) return {code:"F2", weight:4, rank:2};
+  if(s.includes("f3")) return {code:"F3", weight:3, rank:3};
+  if(s.includes("ma") || s.includes("mitarbeiter")) return {code:"MA", weight:2, rank:4};
+  if(s.includes("as") || s.includes("assist")) return {code:"AS", weight:1, rank:5};
+  const n = num(value);
+  if(n !== null){
+    const rank = Math.max(1, Math.min(5, n));
+    return {code:String(rank), weight:Math.max(1, 6-rank), rank};
+  }
+  return {code:"MA", weight:2, rank:4};
+}
+function deterministicId(first, last, dept, role){
+  return squash([first,last,dept,role].filter(Boolean).join("|")).replace(/\s+/g,"_");
+}
+function overlap(a,b){
+  const A = new Set(squash(a).split(" ").filter(Boolean));
+  const B = new Set(squash(b).split(" ").filter(Boolean));
+  let c = 0; A.forEach(x => { if(B.has(x)) c++; });
+  return c;
+}
+
+function parseWorkbook(workbook){
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+  const headerRow = detectHeaderRow(rows);
+  if(headerRow < 0) throw new Error("Kopfzeile nicht erkannt");
+
+  const mapping = mapHeaders(rows[headerRow]);
+  if(mapping.firstName === undefined || mapping.lastName === undefined || mapping.influence === undefined) {
+    throw new Error("Pflichtspalten wurden nicht erkannt");
+  }
+
+  const list = [];
+  for(let i=headerRow+1; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.every(v => String(v).trim() === "")) continue;
+
+    const firstName = String(row[mapping.firstName] || "").trim();
+    const lastName = String(row[mapping.lastName] || "").trim();
+    if(!firstName && !lastName) continue;
+
+    const att = attitudeInfo(row[mapping.attitude]);
+    const h = hierarchyInfo(row[mapping.hierarchy]);
+    const influence = num(row[mapping.influence], 0);
+    const interest = num(row[mapping.interest], 0);
+    const persuadability = num(row[mapping.persuadability], 3);
+    const role = String(row[mapping.role] || "").trim() || "Unbekannt";
+    const department = String(row[mapping.department] || "").trim();
+    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+    const displayName = `${lastName}, ${firstName}`.replace(/^,\s*/, "");
+
+    list.push({
+      id: deterministicId(firstName, lastName, department, role),
+      firstName,
+      lastName,
+      fullName,
+      displayName,
+      role,
+      department,
+      hierarchyCode: h.code,
+      hierarchyWeight: h.weight,
+      hierarchyRank: h.rank,
+      hierarchy: h.rank,
+      influence,
+      interest,
+      persuadability,
+      attitudeLabel: att.label,
+      attitudeFactor: att.factor,
+      bossRaw: cleanName(row[mapping.bossRaw]),
+      bossId: null,
+      bossDisplayName: "",
+      topics: String(row[mapping.topics] || "").trim(),
+      notes: String(row[mapping.notes] || "").trim(),
+      teamRole: String(row[mapping.teamRole] || "").trim(),
+      scoreRaw: 0,
+      score: 0,
+      priority: "",
+      kamCategory: "",
+      riskFlag: false,
+      visibilityFlag: false,
+      matrixX: 0,
+      matrixY: 0,
+      children: []
+    });
+  }
+
+  const seen = new Set();
+  return list.filter(s => {
+    const key = s.id;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function resolveBossIds(stakeholders){
+  orgMatchCount = 0;
+  const byDisplay = new Map(stakeholders.map(s => [squash(s.displayName), s]));
+  const byFull = new Map(stakeholders.map(s => [squash(s.fullName), s]));
+  const byLast = new Map();
+  stakeholders.forEach(s => {
+    const k = squash(s.lastName);
+    if(!byLast.has(k)) byLast.set(k, []);
+    byLast.get(k).push(s);
+  });
+
+  stakeholders.forEach(s => {
+    const raw = s.bossRaw;
+    if(!raw) return;
+
+    let match = byDisplay.get(squash(raw)) || byFull.get(squash(raw));
+
+    if(!match){
+      const parts = raw.includes(",")
+        ? raw.split(",").map(x => x.trim())
+        : raw.split(" ").map(x => x.trim());
+      const last = squash(parts[0] || "");
+      const first = squash(parts[1] || "");
+      const candidates = byLast.get(last) || [];
+      if(candidates.length === 1) match = candidates[0];
+      else if(candidates.length > 1) match = candidates.find(c => squash(c.firstName) === first) || null;
+    }
+
+    if(!match){
+      let best = null, bestScore = 0;
+      stakeholders.forEach(c => {
+        if(c.id === s.id) return;
+        const sc = Math.max(overlap(raw, c.displayName), overlap(raw, c.fullName));
+        if(sc > bestScore){ best = c; bestScore = sc; }
+      });
+      if(best && bestScore >= 2) match = best;
+    }
+
+    if(match && match.id !== s.id){
+      s.bossId = match.id;
+      s.bossDisplayName = match.fullName;
+      orgMatchCount++;
+    }
+  });
+  return stakeholders;
+}
+
+function calculateScoresAndCategories(stakeholders){
+  stakeholders.forEach(s => {
+    s.scoreRaw = s.influence * s.interest * Math.max(1, s.persuadability) * s.hierarchyWeight * s.attitudeFactor;
+    s.riskFlag = (s.attitudeLabel === "negativ" || s.attitudeLabel === "kritisch") && s.influence >= 3;
+    s.visibilityFlag = s.hierarchyRank <= 2 || s.riskFlag;
+  });
+
+  const maxRaw = Math.max(...stakeholders.map(s => s.scoreRaw), 1);
+  stakeholders.forEach(s => s.score = Math.round((s.scoreRaw / maxRaw) * 100));
+
+  stakeholders.sort((a,b) => b.score - a.score);
+  const total = stakeholders.length;
+  const qDevelop = Math.ceil(total * 0.20);
+  const qStabilize = Math.ceil(total * 0.50);
+
+  stakeholders.forEach((s, index) => {
+    if(index < qDevelop){
+      s.priority = "A"; s.kamCategory = "Entwickeln";
+    } else if(index < qStabilize){
+      s.priority = "B"; s.kamCategory = "Stabilisieren";
+    } else {
+      s.priority = "C"; s.kamCategory = "Beobachten";
+    }
+    if(s.visibilityFlag && s.priority === "C"){
+      s.priority = "B";
+      s.kamCategory = "Stabilisieren";
+    }
+    if(s.riskFlag){
+      s.priority = "A";
+      s.kamCategory = "Entwickeln";
+    }
+  });
+
+  return stakeholders;
+}
+
+function calculateMatrixCoordinates(stakeholders){
+  const used = new Set();
+  stakeholders.forEach(s => {
+    let x = s.interest || 1;
+    let y = s.influence || 1;
+    let key = `${x.toFixed(2)}_${y.toFixed(2)}`;
+    while(used.has(key)){
+      x += (Math.random() - 0.5) * 0.18;
+      y += (Math.random() - 0.5) * 0.18;
+      key = `${x.toFixed(2)}_${y.toFixed(2)}`;
+    }
+    used.add(key);
+    s.matrixX = x;
+    s.matrixY = y;
+  });
+  return stakeholders;
+}
+
+function buildHierarchyTree(stakeholders){
+  const lookup = Object.fromEntries(stakeholders.map(s => [s.id, {...s, children: []}]));
+  const roots = [];
+  stakeholders.forEach(s => {
+    if(s.bossId && lookup[s.bossId]){
+      lookup[s.bossId].children.push(lookup[s.id]);
+    } else {
+      roots.push(lookup[s.id]);
+    }
+  });
+  return roots;
+}
+
+function roleSpecificView(stakeholders, roleType) {
+  return stakeholders.filter(s => {
+    const directFields = [s.teamRole, s.role, s.department, s.topics].map(v => String(v || "").toUpperCase()).join(" | ");
+    if (directFields.includes(roleType)) return true;
+
+    switch(roleType) {
+      case 'SVD':
+        return s.hierarchy <= 2 || s.influence >= 4;
+      case 'MVD':
+        return (s.hierarchy === 2 || s.hierarchy === 3) && s.interest >= 3;
+      case 'VVD':
+        return s.persuadability >= 3 && s.hierarchy >= 3;
+      case 'PVD':
+        const roleName = String(s.role || "").toUpperCase();
+        const deptName = String(s.department || "").toUpperCase();
+        return roleName.includes('PRODUKT') || roleName.includes('FACH') || roleName.includes('DIGITAL') || deptName.includes('DIGITAL');
+      default:
+        return false;
+    }
+  });
+}
+
+function processFile(){
+  const file = document.getElementById('fileInput').files[0];
+  if(!file){ alert("Bitte zuerst eine Excel-Datei auswählen."); return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      let stakeholders = parseWorkbook(wb);
+      stakeholders = resolveBossIds(stakeholders);
+      stakeholders = calculateScoresAndCategories(stakeholders);
+      stakeholders = calculateMatrixCoordinates(stakeholders);
+      enriched = stakeholders;
+
+      document.getElementById('statTotal').textContent = enriched.length;
+      document.getElementById('statDevelop').textContent = enriched.filter(x => x.kamCategory === 'Entwickeln').length;
+      document.getElementById('statCritical').textContent = enriched.filter(x => x.riskFlag).length;
+      document.getElementById('statMatches').textContent = orgMatchCount;
+      setStatus(`Datei geprüft. ${enriched.length} Stakeholder erkannt.`);
+      setTopPreview(enriched.slice(0,6));
+      setChecks([
+        "Kopfzeile erkannt und Daten eingelesen",
+        `${enriched.filter(x => x.kamCategory === 'Entwickeln').length} Stakeholder in Entwickeln`,
+        `${orgMatchCount} Vorgesetztenbezüge auf vorhandene Personen gematcht`,
+        "Namen, Kategorien, Organigramm und Matrix vor dem PDF kurz gegenprüfen"
+      ]);
+    } catch(err){
+      setStatus("Fehler beim Einlesen: " + err.message);
+      setChecks(["Die Datei konnte nicht sauber verarbeitet werden."]);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function topTable(list, limit=10){
+  const rows = list.slice(0,limit).map(p => `
+    <tr>
+      <td class="prio-${p.priority}">${p.priority}</td>
+      <td>${esc(p.fullName)}</td>
+      <td>${esc(p.role || p.department || "")}</td>
+      <td>${Math.round(p.score)}</td>
+      <td class="att-${p.attitudeLabel}">${esc(p.attitudeLabel)}</td>
+      <td>${esc(p.kamCategory)}</td>
+    </tr>`).join("");
+  return `<table><thead><tr><th>Prio</th><th>Name</th><th>Rolle/Bereich</th><th>Score</th><th>Haltung</th><th>KAM-Kategorie</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function summaryText(){
+  const dev = enriched.filter(x => x.kamCategory === 'Entwickeln').length;
+  const top5 = enriched.slice(0,5).map(x => x.fullName).join(", ");
+  const risks = enriched.filter(x => x.riskFlag).map(x => x.fullName).join(", ");
+  return `
+    <div class="summary">
+      <p>Aktuell liegen <strong>${dev} Stakeholder in der Kategorie Entwickeln</strong>. Diese Personen sind aus Sicht des Key Account Managements primär bearbeitungsrelevant.</p>
+      <p>Die stärksten Hebel liegen derzeit bei <strong>${esc(top5)}</strong>.</p>
+      <p>Kritische oder konfliktträchtige Personen mit erhöhter Relevanz: <strong>${esc(risks || "keine explizit markiert")}</strong>.</p>
+      <p>Für die weitere Steuerung ist eine klare Trennung zwischen <strong>Entwickeln</strong>, <strong>Stabilisieren</strong> und <strong>Beobachten</strong> erforderlich.</p>
+    </div>`;
+}
+
+function hierarchyColor(n){
+  if(n.attitudeLabel === 'negativ' || n.attitudeLabel === 'kritisch') return '#d76a6a';
+  if(n.attitudeLabel === 'neutral') return '#e8b949';
+  return '#0f4c81';
+}
+
+function renderD3Tree(containerId, roots, relevantIds = null){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = "";
+
+  const rootWrap = document.createElement("div");
+  rootWrap.className = "orgwrap";
+  container.appendChild(rootWrap);
+
+  const data = { id:"root", fullName:"System", role:"", children: roots };
+  const root = d3.hierarchy(data);
+  const dx = 78;
+  const dy = 175;
+  const tree = d3.tree().nodeSize([dx, dy]);
+  tree(root);
+
+  let x0 = Infinity, x1 = -x0;
+  root.each(d => {
+    if(d.x > x1) x1 = d.x;
+    if(d.x < x0) x0 = d.x;
+  });
+
+  const width = Math.max(880, root.height * dy + 240);
+  const height = x1 - x0 + dx * 2 + 40;
+
+  const svg = d3.select(rootWrap)
+    .append("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("width", "100%")
+    .attr("height", Math.min(560, height));
+
+  const g = svg.append("g").attr("transform", `translate(36,${dx - x0})`);
+
+  g.append("g")
+    .attr("fill", "none")
+    .attr("stroke", "#8fb5d1")
+    .attr("stroke-width", 2)
+    .selectAll("path")
+    .data(root.links().filter(l => l.source.data.id !== "root"))
+    .join("path")
+    .attr("opacity", d => {
+      if(!relevantIds) return 1;
+      return (relevantIds.has(d.source.data.id) || relevantIds.has(d.target.data.id)) ? 1 : 0.15;
+    })
+    .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+
+  const nodeEnter = g.append("g")
+    .selectAll("g")
+    .data(root.descendants().filter(d => d.data.id !== "root"))
+    .join("g")
+    .attr("transform", d => `translate(${d.y},${d.x})`)
+    .style("opacity", d => !relevantIds ? 1 : (relevantIds.has(d.data.id) ? 1 : 0.15));
+
+  const nodeW = 164, nodeH = 54;
+  const isVorstand = d => d.data.hierarchy === 1 || d.data.hierarchyRank === 1 || d.data.hierarchyCode === "F1" || String(d.data.role).toLowerCase().includes("vorstand");
+
+  nodeEnter.append("rect")
+    .attr("x", 0)
+    .attr("y", -nodeH/2)
+    .attr("width", nodeW)
+    .attr("height", nodeH)
+    .attr("rx", 6)
+    .attr("fill", d => isVorstand(d) ? "var(--blue)" : "#fff")
+    .attr("stroke", d => isVorstand(d) ? "var(--blue2)" : (!relevantIds ? "#c9dceb" : (relevantIds.has(d.data.id) ? "#0f4c81" : "#c9dceb")))
+    .attr("stroke-width", d => isVorstand(d) ? 2 : (!relevantIds ? 1.5 : (relevantIds.has(d.data.id) ? 2.2 : 1.2)));
+
+  nodeEnter.append("rect")
+    .attr("x", 0)
+    .attr("y", -nodeH/2)
+    .attr("width", 6)
+    .attr("height", nodeH)
+    .attr("rx", 3)
+    .attr("fill", d => isVorstand(d) ? "var(--blue2)" : hierarchyColor(d.data));
+
+  nodeEnter.append("text")
+    .attr("x", 12)
+    .attr("y", -10)
+    .attr("font-size", 12)
+    .style("fill", d => isVorstand(d) ? "#fff" : "var(--text)")
+    .style("font-weight", "bold")
+    .text(d => (d.data.fullName || d.data.name || "").slice(0, 24));
+
+  nodeEnter.append("text")
+    .attr("x", 12)
+    .attr("y", 6)
+    .attr("font-size", 11)
+    .style("fill", d => isVorstand(d) ? "#dcecf7" : "var(--muted)")
+    .text(d => (d.data.role || d.data.department || "").slice(0, 22));
+
+  nodeEnter.append("text")
+    .attr("x", 12)
+    .attr("y", 20)
+    .attr("font-size", 10)
+    .style("fill", d => isVorstand(d) ? "#dcecf7" : "var(--muted)")
+    .text(d => `${d.data.kamCategory || ""} · ${Math.round(d.data.score || 0)}`);
+
+  const note = document.createElement("div");
+  note.className = "small";
+  note.style.marginTop = "8px";
+  note.textContent = relevantIds ? "Der Gesamtbaum bleibt vollständig erhalten. Für diese Sicht werden nur relevante Knoten hervorgehoben, alle übrigen bleiben bewusst abgeblendet sichtbar." : "Das Organigramm wird per D3-Hierarchie-Layout berechnet. Dadurch bleiben Eltern-Kind-Beziehungen auch bei asymmetrischen Bäumen stabil lesbar.";
+  rootWrap.appendChild(note);
+}
+
+function matrixSvg(data, title) {
+  const w = 800, h = 400, pad = 40;
+  let html = `<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px;break-inside:avoid;">
+    <h3 style="margin-top:0;margin-bottom:15px;color:var(--blue)">${title}</h3>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;background:#fafbfc;border:1px solid #e1e8ed;border-radius:8px">
+      <!-- Achsen -->
+      <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#8d9aaa" stroke-width="2"/>
+      <line x1="${pad}" y1="${h-pad}" x2="${pad}" y2="${pad}" stroke="#8d9aaa" stroke-width="2"/>
+      <text x="${w/2}" y="${h-10}" text-anchor="middle" fill="var(--muted)" font-size="12">Interesse →</text>
+      <text x="${pad-25}" y="${h/2}" text-anchor="middle" fill="var(--muted)" font-size="12" transform="rotate(-90, ${pad-25}, ${h/2})">Einfluss →</text>
+`;
+
+  let coords = new Set();
+  let jitter = 0.15;
+  let legendItems = [];
+
+  const xScale = v => pad + ((v-1)/4) * (w - 2*pad);
+  const yScale = v => (h-pad) - ((v-1)/4) * (h - 2*pad);
+
+  data.forEach(d => {
+    let x = d.interest || 1;
+    let y = d.influence || 1;
+    let key = `${x.toFixed(1)}_${y.toFixed(1)}`;
+
+    // ZWINGEND ERFORDERLICH: Kollisionsauflösung erzwingen!
+    while(coords.has(key)){
+      x += (Math.random()-0.5)*jitter;
+      y += (Math.random()-0.5)*jitter;
+      key = `${x.toFixed(1)}_${y.toFixed(1)}`;
+    }
+    coords.add(key);
+
+    let cx = xScale(x);
+    let cy = yScale(y);
+    let color = (d.att || d.attitudeRaw || d.attitudeLabel || "").includes("positiv") ? "var(--green)" : (d.att || d.attitudeRaw || d.attitudeLabel || "").includes("negativ") || (d.att || d.attitudeRaw || d.attitudeLabel || "").includes("kritisch") ? "var(--red)" : "var(--yellow)";
+
+    let fullName = d.fullName || d.name || "";
+    let nameParts = fullName.trim().split(" ");
+    let initials = (nameParts[0]?.[0] || "") + (nameParts.length > 1 ? nameParts[nameParts.length-1][0] : "");
+    initials = initials.toUpperCase().substring(0, 2);
+
+    // Vorstandsprüfung für Legenden-Highlight
+    let isVorstand = (d.hierarchy === 1 || String(d.role).toLowerCase().includes("vorstand"));
+    let nameStyle = isVorstand ? "font-weight:bold;color:var(--blue);" : "color:var(--text);";
+
+    legendItems.push(`<div style="display:flex;align-items:center;width:180px;margin-bottom:8px;break-inside:avoid;">
+      <span style="display:inline-block;width:24px;height:24px;background:${color};color:#fff;border-radius:50%;text-align:center;line-height:24px;font-size:10px;margin-right:8px;font-weight:bold;flex-shrink:0;">${initials}</span>
+      <span style="font-size:11px;${nameStyle}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${fullName}">${fullName}</span>
+    </div>`);
+
+    html += `<circle cx="${cx}" cy="${cy}" r="14" fill="${color}" stroke="#fff" stroke-width="2"/>
+             <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold" font-family="Arial">${initials}</text>`;
+  });
+
+  html += `</svg>
+    <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;">
+      ${legendItems.join("")}
+    </div>
+  </div>`;
+  return html;
+}
+
+function roleFocus(role){
+  return {
+    SVD: "Fokus auf Steuerung, Planung, Vertriebssteuerung und operative Anschlussfähigkeit.",
+    MVD: "Fokus auf Marktbearbeitung, Fläche, Aktivierung und vertriebliche Multiplikatoren.",
+    VVD: "Fokus auf Vermögensberatung, Private Banking, Anlage- und Wertpapiernähe.",
+    PVD: "Fokus auf Projekte, Digitalisierung, Veränderung und Umsetzungsfähigkeit."
+  }[role] || "";
+}
+
+function rolePagesMarkup(role){
+  const subset = roleSpecificView(enriched, role);
+  const orgId = `org-${role.toLowerCase()}`;
+  return `
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">${role} – Fokus aus KAM-Sicht</div><div class="page-sub">${roleFocus(role)}</div></div>
+        <div class="badge">${role}</div>
+      </div>
+      <div class="role-grid">
+        <div>
+          ${matrixSvg(subset, role + " – Stakeholder-Matrix")}
+        </div>
+        <div>
+          <div id="${orgId}"></div>
+        </div>
+      </div>
+      <div class="section-space">${topTable(subset,4)}</div>
+      <div class="footer"><span>Rollenperspektive ${role}</span><span>Version V21</span></div>
+    </div>`;
+}
+
+function priorityCards(){
+  const list = enriched.filter(x => x.kamCategory === 'Entwickeln').slice(0,6);
+  return `<div class="stb-grid">${list.map(p => `
+    <div class="stb">
+      <h3>${esc(p.fullName)}</h3>
+      <p><span class="pill">${esc(p.role || p.department || "")}</span> <span class="pill">Score ${Math.round(p.score)}</span></p>
+      <p><strong>Einordnung:</strong> Einfluss ${p.influence}, Interesse ${p.interest}, Beeinflussbarkeit ${p.persuadability}, Haltung ${esc(p.attitudeLabel)}.</p>
+      <p><strong>KAM-Ableitung:</strong> ${esc(p.kamCategory)}.</p>
+      <p><strong>Themen:</strong> ${esc(p.topics || "–")}</p>
+      <p><strong>Notizen:</strong> ${esc(p.notes || "–")}</p>
+    </div>`).join("")}</div>`;
+}
+
+function preparePdf(){
+  if(!enriched.length){ alert("Bitte erst die Datei prüfen."); return; }
+
+  document.getElementById('report').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">KAM Statusbericht</div><div class="page-sub">Statusbericht aus Sicht des Key Account Managements</div></div>
+        <div class="badge">Gesamtübersicht</div>
+      </div>
+      <div class="hero-box">Die Steuerung des betreuungsrelevanten Systems konzentriert sich aktuell auf ${esc(enriched.slice(0,5).map(x => x.fullName).join(", "))}. Aus KAM-Sicht ist eine differenzierte Bearbeitung dieser Schlüsselpositionen erforderlich.</div>
+      <div class="cards3">
+        <div class="card"><h3>Stakeholder gesamt</h3><div class="big">${enriched.length}</div></div>
+        <div class="card"><h3>Entwickeln</h3><div class="big">${enriched.filter(x => x.kamCategory === 'Entwickeln').length}</div></div>
+        <div class="card"><h3>kritische Personen</h3><div class="big">${enriched.filter(x => x.riskFlag).length}</div></div>
+      </div>
+      <div class="footer"><span>Gesamtübersicht</span><span>Version V20</span></div>
+    </div>
+
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">Executive Summary</div><div class="page-sub">Verdichtung der zentralen Muster aus KAM-Sicht.</div></div>
+        <div class="badge">Summary</div>
+      </div>
+      ${summaryText()}
+      <div class="footer"><span>Executive Summary</span><span>Version V20</span></div>
+    </div>
+
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">Stakeholder-Matrix gesamt</div><div class="page-sub">Interesse x Einfluss für das Gesamtbild.</div></div>
+        <div class="badge">Matrix</div>
+      </div>
+      ${matrixSvg(enriched)}
+      <div class="footer"><span>Matrix gesamt</span><span>Version V20</span></div>
+    </div>
+
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">Organigramm gesamt</div><div class="page-sub">Formale Struktur des betreuungsrelevanten Systems.</div></div>
+        <div class="badge">Struktur</div>
+      </div>
+      <div id="org-overall"></div>
+      <div class="footer"><span>Organigramm gesamt</span><span>Version V20</span></div>
+    </div>
+
+    ${rolePagesMarkup('SVD')}
+    ${rolePagesMarkup('MVD')}
+    ${rolePagesMarkup('VVD')}
+    ${rolePagesMarkup('PVD')}
+
+    <div class="page">
+      <div class="page-header">
+        <div><div class="page-title">A-Prioritäten</div><div class="page-sub">Vertiefende Kurzprofile für die unmittelbar bearbeitungsrelevanten Personen.</div></div>
+        <div class="badge">A-Prioritäten</div>
+      </div>
+      ${priorityCards()}
+      <div class="footer"><span>A-Prioritäten</span><span>Version V20</span></div>
+    </div>`;
+  const overallRoots = buildHierarchyTree(enriched.slice(0,22));
+  renderD3Tree("org-overall", overallRoots);
+  renderD3Tree("org-svd", overallRoots, new Set(roleSpecificView(enriched, "SVD").map(s => s.id)));
+  renderD3Tree("org-mvd", overallRoots, new Set(roleSpecificView(enriched, "MVD").map(s => s.id)));
+  renderD3Tree("org-vvd", overallRoots, new Set(roleSpecificView(enriched, "VVD").map(s => s.id)));
+  renderD3Tree("org-pvd", overallRoots, new Set(roleSpecificView(enriched, "PVD").map(s => s.id)));
+
+  setTimeout(() => window.print(), 150);
+}
+</script>
+</body>
+</html>
