@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>KAM V13 FINAL</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial;background:#f5f9fc;margin:0;padding:20px}
+h1{color:#0f4c81}
+.box{background:white;padding:15px;border-radius:10px;margin-bottom:15px;border:1px solid #ccc}
+button{padding:10px 15px;border:none;border-radius:8px;background:#0f4c81;color:white;font-weight:bold}
+.node{border:1px solid #ccc;padding:6px;margin:4px;border-left:5px solid #0f4c81;border-radius:6px}
+</style>
+</head>
+<body>
+
+<h1>KAM Organigramm V13</h1>
+
+<div class="box">
+<input type="file" id="file">
+<button onclick="load()">Prüfen</button>
+<button onclick="build()">PDF</button>
+</div>
+
+<div class="box" id="control">Noch nichts geladen</div>
+
+<div id="report"></div>
+
+<script>
+let data=[]
+
+function clean(n){
+return String(n||"").replace(",", "").trim()
+}
+
+function load(){
+let f=document.getElementById('file').files[0]
+let r=new FileReader()
+
+r.onload=e=>{
+let wb=XLSX.read(e.target.result,{type:'binary'})
+let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
+
+data=rows.map(r=>{
+let name=clean((r.Vorname||"")+" "+(r.Nachname||""))
+return {...r,name}
+})
+
+document.getElementById("control").innerHTML=
+"Stakeholder: "+data.length+"<br>"+
+"Top: "+data.slice(0,3).map(x=>x.name).join(", ")
+}
+
+r.readAsBinaryString(f)
+}
+
+function build(){
+
+let html=""
+
+html+=`<div class="box"><h2>Organigramm</h2>`
+
+data.slice(0,20).forEach(p=>{
+html+=`<div class="node">${p.name}</div>`
+})
+
+html+="</div>"
+
+document.getElementById("report").innerHTML=html
+
+window.print()
+}
+</script>
+
+</body>
+</html>
