@@ -1,1 +1,0 @@
-# stakeholder-app
